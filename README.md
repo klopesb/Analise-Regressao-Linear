@@ -4,7 +4,7 @@
 
 O dataset “Movie Budgets”, disponível no site DASL (Data and Story Library), tem uma amostra de 120 filmes e inclui variáveis como o nome do filme, a duração do filme, o orçamento e as receitas brutas nos EUA em milhões, o género e uma variável dummy que indica se o filme é do género “Drama”. O objetivo do trabalho é explorar e estimar uma regressão, que permita relacionar receita bruta de um filme nos EUA (variável dependente) com as restantes variáveis explicativas.
 
-O projeto foi desenvolvido como parte do curso de Estatística e apresenta análises estatísticas baseadas em dados especificados no estudo.
+O projeto foi desenvolvido como parte do curso de Estatística do Mestrado em Bioinformática e apresenta análises estatísticas realizadas na linguagem R, baseadas nos dados especificados no estudo.
 
 ### 📂 Conteúdo do Repositório
 
