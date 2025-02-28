@@ -1,0 +1,637 @@
+---
+title: "Trabalho de Estatística"
+subtitle: "Grupo 5"
+author: " Cátia Rosário (PG57791), Elidiane Rosário (PG55128), Karolina Barbosa (PG55129) e Vanessa Rodriguez (PG49131)"
+date: "2025-01-08"
+output: 
+  prettydoc::html_pretty:
+    theme: cayman
+    toc: yes
+---
+
+```{=html}
+<style>
+body {
+text-align: justify}
+</style>
+```
+
+```{r, include=FALSE}
+library(ggplot2)
+library(GGally)
+library(corrplot)
+library(car)
+library(lmtest)
+library(MASS)
+library(sandwich)
+library(lmtest)
+library(egg)
+library(gridExtra)
+library(grid)
+library(patchwork)
+options(scipen = 999)
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+```
+
+\
+
+## 1. Introdução
+
+O dataset "Movie Budgets", disponível no site DASL (Data and Story Library), tem uma amostra de 120 filmes e inclui variáveis como o nome do filme, a duração do filme, o orçamento e as receitas brutas nos EUA em milhões, o género e uma variável dummy que indica se o filme é do género "Drama". O objetivo do trabalho é explorar e estimar uma regressão, que permita relacionar receita bruta de um filme nos EUA (variável dependente) com as restantes variáveis explicativas.\
+
+\
+
+## 2. Análise Exploratória dos Dados
+
+### 2.1. Classificação das variáveis
+
+\
+Os dados obtidos do repositório DASL foram importados em formato .txt:
+
+```{r}
+movie_budgets <- read.delim("movie-budgets.txt", header = TRUE, sep = "\t", dec = ".")
+```
+
+\
+
+Abaixo, é possível visualizar as variáveis que constituem os dados e a classificação das mesmas.
+
++---------------+-----------------------+----------------------------------------------+
+| Variável      | Tipo de variável      | Descrição                                    |
++===============+=======================+==============================================+
+| Movie         | Qualitativa nominal   | Nome do filme                                |
++---------------+-----------------------+----------------------------------------------+
+| Run.time      | Quantitativa contínua | Duração do filme em minutos                  |
++---------------+-----------------------+----------------------------------------------+
+| Budget        | Quantitativa contínua | Orçamento do filme em milhões de dólar       |
++---------------+-----------------------+----------------------------------------------+
+| USGross       | Quantitativa contínua | Receita bruta nos EUA em milhões de dólar    |
++---------------+-----------------------+----------------------------------------------+
+| Genre         | Qualitativa nominal   | Género do filme                              |
++---------------+-----------------------+----------------------------------------------+
+| Dramas        | Categórica (factor)   | 1: Indica que o filme é do género Drama.     |
+|               |                       |                                              |
+|               |                       | 0: Indica que o filme não é do género Drama. |
++---------------+-----------------------+----------------------------------------------+
+
+Na linguagem R, as variáveis apresentam a seguinte classificação:
+
+```{r}
+str(movie_budgets)
+```
+
+\
+
+### 2.2. Transformação da variável "USGross"
+
+Uma vez que a variável `USGross` tem como unidade dólares, procedemos à transformação da mesma para milhões de dólares. Deste modo, esta variável passa a estar na mesma unidade que a variável `Budget`
+
+```{r}
+movie_budgets$USGross.... <- movie_budgets$USGross.... / 100000
+names(movie_budgets) <- c("Movie", "RunTime", "Budget", "USGross", "Genre", "IsDrama")
+```
+
+\
+
+### 2.3. Análise das Variáveis
+
+A variação geral das variáveis numéricas está representada abaixo. Podemos observar que o tempo de duração dos filmes (`RunTime`) varia entre os 68 e os 187 minutos, e que apenas 23% dos filmes são do género Drama. Em termos financeiros, o orçamento varia entre 100 mil dólares e 20.7 milhões de dólares, enquanto que o lucro varia entre 4 milhões e 380 milhões de dólares.
+
+```{r}
+summary(movie_budgets)
+```
+
+\
+
+#### 2.3.1 Representação das variáveis numéricas
+
+##### RunTime
+
+```{r,fig.width=12, fig.height=6}
+
+hist1 <- ggplot() + geom_histogram(data=movie_budgets, aes(x=RunTime), fill = "skyblue3", color="skyblue4",bins=10) + xlab("Minutos") + ylab("Nº de filmes") + theme_bw()
+box1 <- ggplot(data=movie_budgets) + geom_boxplot(aes(x=RunTime), fill = "skyblue3", color="skyblue4") + xlab("Minutos") + coord_flip()+ theme_bw()
+spacer <- textGrob(" ", gp = gpar(fontsize = 1))
+grid.arrange(hist1, spacer, box1, ncol=3,widths = c(10, 1, 10), top="Duração do filme (minutos)")
+
+```
+
+\
+
+##### Budget
+
+```{r,fig.width=12, fig.height=6}
+
+hist2 <- ggplot() + geom_histogram(data=movie_budgets, aes(x=Budget), fill = "skyblue3", color="skyblue4",bins=10) + xlab("Milhões de dólares") + ylab("Nº de filmes") + theme_bw()
+box2 <- ggplot(data=movie_budgets) + geom_boxplot(aes(x=Budget), fill = "skyblue3", color="skyblue4") + xlab("Milhões de dólares") + coord_flip()+ theme_bw()
+spacer <- textGrob(" ", gp = gpar(fontsize = 1))
+grid.arrange(hist2, spacer, box2, ncol=3,widths = c(10, 1, 10), top="Orçamento")
+
+```
+
+\
+
+##### USGross
+
+```{r,fig.width=12, fig.height=6}
+
+hist2 <- ggplot() + geom_histogram(data=movie_budgets, aes(x=USGross), fill = "skyblue3", color="skyblue4",bins=10) + xlab("Milhões de dólares") + ylab("Nº de filmes") + theme_bw()
+box2 <- ggplot(data=movie_budgets) + geom_boxplot(aes(x=USGross), fill = "skyblue3", color="skyblue4") + xlab("Milhões de dólares") + coord_flip()+ theme_bw()
+spacer <- textGrob(" ", gp = gpar(fontsize = 1))
+grid.arrange(hist2, spacer, box2, ncol=3,widths = c(10, 1, 10), top="Receita bruta (Milhões de dólares)")
+
+```
+
+\
+
+#### 2.3.2 Representação das variáveis categóricas
+
+##### Genre
+
+```{r}
+ggplot() + geom_bar(data=movie_budgets, aes(x=Genre),  fill = "skyblue3", color="skyblue4")+ ylab("Nº de filmes") + theme_bw() + ggtitle("Género dos filmes") + theme(plot.title = element_text(hjust = 0.5))
+
+```
+
+\
+
+##### IsDrama
+
+```{r}
+ggplot() + geom_bar(data=movie_budgets, aes(x=IsDrama),  fill = "skyblue3", color="skyblue4")+ ylab("Nº de filmes") + theme_bw() + ggtitle("Não Drama vs Drama") + theme(plot.title = element_text(hjust = 0.5))
+
+```
+
+\
+
+### 3. Preparação de Dados para o Modelo
+
+#### 3.1. Limpeza de dados
+
+Através da observação dos gráficos, é possível verificar que existem alguns *outliers* nas variáveis numéricas. Neste estudo, iremos aplicar modelos a três conjuntos de dados - o *dataset* original e dois *datasets* resultante da limpeza de dados. A limpeza de dados consistiu em dois métodos distintos - a remoção de *outliers* e a substituição de *outliers* pela mediana - uma vez que os outliers podem enviesar os resultados e a performance do modelo. Para além disso, serão removidos os valores NA, que consistem em observações incompletas ou vazias. Por fim, não iremos incluir a variável `IsDrama` no modelo, uma vez que a variável `Genre` já contém a mesma informação.
+
+```{r}
+# remoção dos outliers (valores acima de 1.5 * IQR)
+
+outliers <- apply(movie_budgets[,c(2,3,6)], 2, function(x) boxplot.stats(x)$out)
+remove_outliers <- function(x) {
+  Q1 <- quantile(x, 0.25, na.rm = TRUE)
+  Q3 <- quantile(x, 0.75, na.rm = TRUE)
+  IQR <- Q3 - Q1
+  x[x < (Q1 - 1.5 * IQR) | x > (Q3 + 1.5 * IQR)] <- NA
+  return(x)
+}
+```
+
+```{r}
+# criação de dataset sem outliers -> movie_budgets_no_outliers
+
+numeric_vars <- names(movie_budgets[,c(2,3,6)])
+movie_budgets_no_outliers <- movie_budgets
+movie_budgets_no_outliers[, numeric_vars] <- movie_budgets_no_outliers[, numeric_vars] %>%
+  lapply(remove_outliers)
+
+movie_budgets_no_outliers <- movie_budgets_no_outliers[complete.cases(movie_budgets_no_outliers), ]
+str(movie_budgets_no_outliers)
+
+```
+\
+``` {r}
+# substituição dos outliers pela mediana -> movie_budgets_mediana
+
+movie_budgets_mediana <- movie_budgets
+movie_budgets_mediana[, numeric_vars] <- movie_budgets_mediana[, numeric_vars] %>%
+  lapply(remove_outliers)
+movie_budgets_mediana[, numeric_vars] <- movie_budgets_mediana[, numeric_vars] %>%
+  lapply(function(x) ifelse(is.na(x), median(x, na.rm = TRUE), x))
+
+movie_budgets_mediana <- movie_budgets_mediana[complete.cases(movie_budgets_mediana), ]
+str(movie_budgets_mediana)
+
+```
+
+\
+
+Após a análise descritiva das variáveis e apelando ao Teorema do Limite Central, assumimos que os dados seguem uma distribuição normal, uma vez que a nossa amostra tem um N = 84.
+
+\
+
+#### 3.2. Correlação entre variáveis
+
+Antes da formulação do modelo, é importante aferir os níveis de correlação entre as variáveis numéricas. Deste modo, é possível incluir apenas variáveis não correlacionadas no mesmo modelo, evitando que esta correlação interfira com os resultados. Neste estudo, utilizámos o método Pearson, adequado para averiguar as correlações entre variáveis de dados com distribuição normal, representadas pelo coeficiente de correlação $r$.
+
+```{r, echo=F}
+# $r={\frac{n\sum_{}XY-\sum_{}X\sum\_{}Y}{\sqrt{n\sum_{}X^2-(\sum_{}X)^2)*(n\sum_{}Y^2-(\sum_{}Y)^2)}}$
+```
+
+
+
+```{r}
+# Dataset original
+cor(movie_budgets[, 2:3])
+```
+
+```{r}
+# Dataset com outliers removidos
+cor(movie_budgets_no_outliers[, 2:3])
+```
+
+```{r}
+# Dataset com outliers substituidos pela mediana
+cor(movie_budgets_mediana[, 2:3])
+```
+
+Assumindo um valor $r > 0.5$ como uma correlação relevante, podemos afirmar que não existem correlações relevantes entre as variáveis para os *datasets* com tratamento de *outliers*. Isto é importante para evitar problemas de multi-colinearidade no nosso modelo. No entanto, para o *dataset* original, a variável `Budget` está correlacionada com a variável `RunTime`, com um valor $r$ muito próximo de 0.5.
+
+\
+
+##### 3.2.1 Correlação entre as variáveis independentes (RunTime e Budget) e a variável dependente (USGross)
+
+As correlações entre a variável dependente e as duas variáveis independentes foram averiguadas com um *scatterplot*. Abaixo, é possível observar uma correlação positiva entre a variável dependente (`USGross`) e ambas as variáveis independentes.
+
+```{r,fig.width=12, fig.height=4}
+smo1 <- ggplot(movie_budgets, aes(x = Budget, y = USGross)) +
+  geom_point(color = "skyblue3") +
+  geom_smooth(method = "lm", se = TRUE, color = "grey10", linetype = "dashed") +
+ theme_bw() +
+   ggtitle("USGross vs Budget") +
+       labs(x = "Budget") +
+       labs(y = "USGross") +
+  theme(plot.title = element_text(hjust = 0.5))
+
+smo2 <- ggplot(movie_budgets, aes(x = RunTime, y = USGross)) +
+  geom_point(color = "skyblue3") +
+  geom_smooth(method = "lm", se = TRUE, color = "grey10", linetype = "dashed") +
+  theme_bw() +
+  ggtitle("USGross vs RunTime") +
+       labs(x = "RunTime") +
+       labs(y = "USGross") + 
+  theme(plot.title = element_text(hjust = 0.5)) 
+spacer <- textGrob(" ", gp = gpar(fontsize = 1))
+grid.arrange(smo1, spacer, smo2, ncol=3,widths = c(10, 1, 10))
+
+```
+\
+
+### 4. Modelo de Regressão
+
+Para a análise do ajuste do modelo, temos que formular a hipótese nula e a hipótese alternativa, representadas abaixo:\
+
+-   $H0:$ Não existe uma relação significativa entre as variáveis independentes e a variável dependente.
+
+-   $H1:$ Existe uma relação significativa entre as variáveis independentes e a variável dependente.
+
+A próxima etapa consiste em formular e avaliar os modelos de cada um dos 3 *datasets*.
+
+\
+
+#### 4.1. Modelo do Dataset original - implementação
+
+```{r}
+# Modelo com todas as variáveis
+model_full <- lm(USGross ~ Budget + RunTime + Genre , data = movie_budgets)
+summary(model_full)
+```
+
+Neste modelo completo, verificamos que apenas a variável Budget é significativa, assumindo um nivel de significância de $\alpha=0.05$. O $R^2$ é de aproximadamente 37%, indicando que o modelo de regressão explica 37% da variabilidade da variável dependente com base nas variáveis independentes incluídas no modelo. Por outras palavras, 37% da variação observada na variável dependente pode ser explicada pelas variáveis independentes do modelo. Este valor é relativamente baixo, o que poderá ser devido a outros fatores não considerados ou à variabilidade aleatória.
+
+\
+
+```{r}
+# Modelo com apenas a variável significativa - Budget
+model_budget <- lm(USGross ~ Budget, data = movie_budgets)
+summary(model_budget)
+```
+
+Ao retirarmos as variáveis não significativas, verifica-se que o $R^2$ diminui de 37% para 33%, aproximadamente, indicando que apenas 4% da variabilidade é explicada pelas variáveis `RunTime` e `Genre`. Deste modo, podemos rejeitar $H0$, uma vez que poderá haver uma relação significativa entre as variáveis independentes e a variável dependente em estudo.
+
+\
+
+##### 4.1.1. Análise Stepwise do Modelo
+
+A análise stepwise do modelo permite identificar que variáveis devem ser incorporadas, de modo a obter o modelo com a melhor performance. Detalhadamente, foram usados os métodos `both`, `forward` e `backward`.
+
+```{r}
+model_aic_bo <- stepAIC(model_full, direction = "both", trace = FALSE)
+summary(model_aic_bo)
+```
+
+```{r}
+model_aic_f <- stepAIC(model_full, direction = "forward", trace = FALSE)
+summary(model_aic_f)
+```
+
+```{r}
+model_aic_b <- stepAIC(model_full, direction = "backward", trace = FALSE)
+summary(model_aic_b)
+```
+
+```{r}
+AIC(model_aic_bo)
+AIC(model_aic_f)
+AIC(model_aic_b)
+```
+
+\
+
+A análise stepwise aparenta estar em concordância com a nossa análise. Através desta análise, verificamos que os métodos `both` e `backward` apresentam o mesmo valor AIC, enquanto que o método `forward` apresenta um valor de AIC mais elevado. Assim sendo, o modelo com a melhor performance foi obtido pelo método `both` e `backward`, que inclui apenas a variável `Budget`.
+
+\
+
+```{r,fig.width=12, fig.height=8}
+par(mfrow=c(2,2))
+plot(model_aic_bo)
+```
+
+Os gráficos de diagnóstico acima indicam que os dados do modelo apresentam heterocedasticidade e uma distribuição não gaussiana.
+
+\
+
+#### 4.2. Modelo do Dataset com outliers removidos - implementação
+
+```{r}
+# Modelo com todas as variáveis
+model_full <- lm(USGross ~ Budget + RunTime + Genre , data = movie_budgets_no_outliers)
+summary(model_full)
+```
+
+Em condordância com os modelos anteriores, a variável `Budget` é a única significativa. O $R^2$ é de aproximadamente 16%, sendo inferior em relação ao modelo inicial.
+
+\
+
+```{r}
+# Modelo com apenas a variável significativa - Budget
+model_budget <- lm(USGross ~ Budget, data = movie_budgets_no_outliers)
+summary(model_budget)
+```
+
+Retirando as variáveis não significativas, verifica-se que o $R^2$ diminui para 10%, aproximadamente. Através deste modelo, podemos rejeitar $H0$. No entanto, o facto do valor $R^2$ ser baixo põe em causa a capacidade preditiva do modelo.
+
+\
+
+##### 4.2.1. Análise Stepwise do Modelo
+
+```{r}
+model_aic_bo <- stepAIC(model_full, direction = "both", trace = FALSE)
+summary(model_aic_bo)
+```
+
+```{r}
+model_aic_f <- stepAIC(model_full, direction = "forward", trace = FALSE)
+summary(model_aic_f)
+```
+
+```{r}
+model_aic_b <- stepAIC(model_full, direction = "backward", trace = FALSE)
+summary(model_aic_b)
+```
+
+```{r}
+AIC(model_aic_bo)
+AIC(model_aic_f)
+AIC(model_aic_b)
+```
+
+Através desta análise, verificamos que os métodos `both` e `backward` apresentam o mesmo valor AIC, sendo este menor que valor que o método `forward` apresenta. Tendo em conta o valor de AIC, escolhemos o modelo obtido pelo método `both` e `backward`, por apresentar um AIC menor. A única variável selecionada foi a `Budget`.
+
+
+\
+
+```{r,fig.width=12, fig.height=8}
+par(mfrow=c(2,2))
+plot(model_aic_bo)
+```
+
+Os gráficos de diagnóstico acima indicam que os dados do modelo apresentam heterocedasticidade e uma distribuição não normal.
+
+\
+
+#### 4.3. Modelo do Dataset com outliers substituídos - implementação
+
+```{r}
+# Modelo com todas as variáveis
+model_full <- lm(USGross ~ Budget + RunTime + Genre , data = movie_budgets_mediana)
+summary(model_full)
+```
+
+Em condordância com os modelos anteriores, a variável `Budget` é a única significativa. O $R^2$ é de aproximadamente 13%, sendo inferior em relação ao modelo inicial.
+
+\
+
+```{r}
+# Modelo com apenas a variável significativa - Budget
+model_budget <- lm(USGross ~ Budget, data = movie_budgets_mediana)
+summary(model_budget)
+```
+
+Retirando as variáveis não significativas, verifica-se que o $R^2$ diminui para 7%, aproximadamente. Através deste modelo, podemos rejeitar $H0$. No entanto, o facto do valor $R^2$ ser baixo põe em causa a capacidade preditiva do modelo.
+
+\
+
+##### 4.3.1. Análise Stepwise do Modelo
+
+```{r}
+model_aic_bo <- stepAIC(model_full, direction = "both", trace = FALSE)
+summary(model_aic_bo)
+```
+
+```{r}
+model_aic_f <- stepAIC(model_full, direction = "forward", trace = FALSE)
+summary(model_aic_f)
+```
+
+```{r}
+model_aic_b <- stepAIC(model_full, direction = "backward", trace = FALSE)
+summary(model_aic_b)
+```
+
+```{r}
+AIC(model_aic_bo)
+AIC(model_aic_f)
+AIC(model_aic_b)
+```
+
+Através desta análise, verificámos que os métodos `both` e `backward` apresentam o mesmo valor AIC, sendo este menor que o valor que o método `forward` apresenta. Tendo em conta o valor de AIC, escolhemos o modelo obtido pelo método `both` e `backward`, por apresentar um AIC menor. A única variável selecionada foi a `Budget`.\
+
+\
+
+```{r,fig.width=12, fig.height=8}
+par(mfrow=c(2,2))
+plot(model_aic_bo)
+```
+
+Os gráficos de diagnóstico acima indicam que os dados do modelo apresentam heterocedasticidade e uma distribuição não normal.
+
+\
+
+### 5. Avaliação dos Modelos 
+#### 5.1. Dataset original
+
+```{r}
+# Autocorrelação
+dwtest(model_aic_bo)
+```
+
+Para este modelo, não se rejeita a hipótese nula de que não existe autocorrelacão para um nível de significância de $\alpha=0.05$.
+
+\
+
+```{r}
+# Homoscedasticidade
+bptest(model_aic_bo)
+```
+
+Para este modelo, rejeita-se a hipótese nula, assumindo um nível de significância de $\alpha=0.05$, sugerindo que existe heterocedasticidade no nosso modelo. Este resultado é concordante com as interpretações feitas dos gráficos de diagnóstico.
+
+\
+
+```{r}
+# Multicolinearidade: Variance Inflation Factor (VIF)
+# vif(model_aic_bo)
+```
+Neste estudo, não será necessário testar a multicolinearidade, uma vez que o modelo tem apenas uma variável.
+\
+
+```{r}
+# Pressuposto de normalidade
+shapiro.test(model_aic_bo$residuals)
+```
+
+De acordo com o teste de normalidade, rejeitamos a hipótese nula de normalidade para os mesmos níveis de significância, pelo que a amostra não foi gerada de uma distribuição normal, tal como foi observado nos gráficos de diagnóstico.
+
+\
+
+```{r}
+anova(model_aic_bo) 
+```
+
+\
+
+##### 5.1.1. Transformação logarítmica
+
+De modo a contornar a não normalidade dos dados, foi implementado um modelo com os dados transformados. 
+
+```{r}
+model_robust_sd <- lm(log(USGross) ~ Budget , data = movie_budgets)
+
+# Corrigir erros padrão
+summary(model_robust_sd)
+coeftest(model_robust_sd, vcov = vcovHC(model_robust_sd, type = "HC3"))
+dwtest(model_robust_sd)
+bptest(model_robust_sd)
+shapiro.test(model_robust_sd$residuals)
+```
+
+Usando erros padrão robustos e recorrendo à transformação logarítmica da variável dependente, a variável `Budget` aparenta ser significativa e os resultados dos testes estatísticos confirmam a aplicabilidade do modelo. Neste modelo, quando o `Budget` aumenta 1 dólar, as receitas brutas aumentam (0.000000124738 \* 100)%.
+
+\
+
+#### 5.2. Dataset com outliers removidos
+
+```{r}
+# Autocorrelação
+dwtest(model_aic_bo)
+```
+
+Para este modelo, não se rejeita a hipótese nula de que não existe autocorrelacão.
+
+\
+
+```{r}
+# Homoscedasticidade
+bptest(model_aic_bo)
+```
+
+Para este modelo, não se rejeita a hipótese nula para os mesmos níveis de significância, pelo que existe homocedasticidade no nosso modelo.
+
+\
+
+```{r}
+# Pressuposto de normalidade
+shapiro.test(model_aic_bo$residuals)
+```
+
+De acordo com o teste de normalidade, rejeitamos a hipótese nula de normalidade para os mesmos níveis de significância, pelo que a amostra não foi gerada de uma distribuição normal.
+
+\
+
+```{r}
+anova(model_aic_bo) 
+```
+\
+
+##### 5.2.1. Transformação logarítmica
+
+```{r}
+model_robust_sd <- lm(log(USGross) ~ Budget , data = movie_budgets_no_outliers)
+
+# Corrigir erros padrão
+summary(model_robust_sd)
+coeftest(model_robust_sd, vcov = vcovHC(model_robust_sd, type = "HC3"))
+dwtest(model_robust_sd)
+bptest(model_robust_sd)
+shapiro.test(model_robust_sd$residuals)
+```
+
+Usando erros padrão robustos e transformando a variável dependente através do modelo log-linear, a variável `Budget` é significativa e os resultados dos testes estatísticos confirmam a aplicabilidade do modelo. Neste modelo, quando o `Budget` aumenta 1 dólar, as receitas brutas aumentam (0.000000113800 \* 100)%, tudo resto constante.
+
+\
+
+#### 5.3. Dataset com outliers substituídos pela mediana
+
+```{r}
+# Autocorrelação
+dwtest(model_aic_bo)
+```
+
+Para este modelo, não se rejeita a hipótese nula de que não existe autocorrelacão para um nível de significância de $\alpha=0.05$.
+
+\
+
+```{r}
+# Homoscedasticidade
+bptest(model_aic_bo)
+```
+
+Para este modelo, não se rejeita a hipótese nula para os mesmos níveis de significância, pelo que existe homocedasticidade no nosso modelo.
+
+\
+
+
+```{r}
+# Pressuposto de normalidade
+shapiro.test(model_aic_bo$residuals)
+```
+
+De acordo com o teste de normalidade, rejeitamos a hipótese nula de normalidade para níveis de significância, pelo que a amostra não foi gerada de uma distribuição normal.
+
+\
+
+```{r}
+anova(model_aic_bo) 
+```
+
+\
+
+##### 5.3.1. Transformação logarítmica
+
+```{r}
+model_robust_sd <- lm(log(USGross) ~ Budget , data = movie_budgets_mediana)
+
+# Corrigir erros padrão
+summary(model_robust_sd)
+coeftest(model_robust_sd, vcov = vcovHC(model_robust_sd, type = "HC3"))
+dwtest(model_robust_sd)
+bptest(model_robust_sd)
+shapiro.test(model_robust_sd$residuals)
+```
+
+Usando erros padrão robustos e transformando a variável dependente, usando um modelo log-linear, a variável `Budget` é significativa e os resultados dos testes estatísticos não confirmam a aplicabilidade do modelo, uma vez que o $p-value$ do teste de Shapiro-Wilk é inferior a 5%. Neste modelo, quando o `Budget` aumenta 1 dólar, as receitas brutas aumentam (0.000000101944 \* 100)%.\
+
+\
+
+### 6. Conclusão
+
+Os modelos indicam que não é esperado que a duração do filme tenha impacto nas receitas brutas uma vez que, em média, a maior parte dos filmes tem uma duração de 1 a 2 horas e as pessoas esperam que essa seja a duração média de um filme, não impactando a sua decisão. Isto é suportado pelo boxplot  para a duração do filme. Do mesmo modo, não é de esperar que o género de um filme tenha também um impacto considerável nas receitas brutas uma vez que existe uma multitude de gostos, com algumas pessoas a gostar, por exemplo, de filmes de terror e outras de comédia.\
+Com a análise anterior, podemos concluir que o modelo do *dataset* original, e usando um modelo log-linear, apresenta a variável `Budget` como significativa e os resultados dos testes estatísticos confirmam a aplicabilidade do modelo, uma vez que apresenta o maior $R^2$. A transformação log-linear permite que os pressupostos do método dos mínimos quadrados sejam cumpridos.
+
